@@ -5,6 +5,10 @@ name = "pypi"
 
 [packages]
 opencv-python = "*"
+sora-sdk = "*"
+numpy = "*"
+sounddevice = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
