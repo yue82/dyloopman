@@ -18,7 +18,7 @@ def video_movie_local(input_path_or_port, mask_img_path, cascade_file_path):
         while True:
             ret, target_frame = capture.read()
             target_frame_gray = cv2.cvtColor(target_frame, cv2.COLOR_BGR2GRAY)
-            faces = cascade.detectMultiScale(target_frame_gray, scaleFactor=1.1, minNeighbors=3, minSize=(75, 75))
+            faces = cascade.detectMultiScale(target_frame_gray, scaleFactor=1.1, minNeighbors=3, minSize=(50, 50))
             for face_ps in faces:
                 util.replace_face(face_ps, target_frame, mark_rgba)
             cv2.imshow("Masked", target_frame)
