@@ -22,6 +22,6 @@ def replace_face(face_ps, target_img, mark_rgba):
 
 
 def output_img(input_img_path, target_img):
-    output_img_path = 'output_img/{}'.format('/'.join(input_img.split('/')[1:]))
+    output_img_path = 'output_img/{}'.format('/'.join(input_img_path.split('/')[1:]))
     print(f'Output: {output_img_path}')
     cv2.imwrite(output_img_path, target_img)
