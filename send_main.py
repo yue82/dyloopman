@@ -45,6 +45,7 @@ class Sendonly:
         audio_channels: int = 1,
         audio_sample_rate: int = 16000,
         video_capture: Optional[cv2.VideoCapture] = None,
+        use_mark = False,
     ):
         """
         Sendonly インスタンスを初期化します。
@@ -108,6 +109,7 @@ class Sendonly:
         self.cascade = cv2.CascadeClassifier(cascade_file_path)
         util.check_file('Mask', mask_img_path)
         self.mark_rgba = cv2.imread(mask_img_path, cv2.IMREAD_UNCHANGED)
+        self.use_mark = use_mark
 
 
     def connect(self, fake_audio=False, fake_video=False) -> None:
@@ -145,7 +147,10 @@ class Sendonly:
             target_frame_gray = cv2.cvtColor(target_frame, cv2.COLOR_BGR2GRAY)
             faces = self.cascade.detectMultiScale(target_frame_gray, scaleFactor=1.1, minNeighbors=3, minSize=(75, 75))
             for face_ps in faces:
-                util.replace_face(face_ps, target_frame, self.mark_rgba)
+                if self.use_mark:
+                    util.replace_face(face_ps, target_frame, self.mark_rgba)
+                else:
+                    util.replace_face_whitecycle(face_ps, target_frame)
             if ret:
                 self._video_source.on_captured(target_frame)
 
@@ -318,7 +323,7 @@ def get_video_capture(
     return video_capture
 
 
-def sendonly(mask_img, cascade_file) -> None:
+def sendonly(mask_img, cascade_file, use_mark) -> None:
     """
     環境変数を使用して Sendonly インスタンスを設定し実行します。
 
@@ -370,13 +375,15 @@ def sendonly(mask_img, cascade_file) -> None:
         openh264_path=openh264_path,
         use_hwa=use_hwa,
         video_capture=video_capture,
+        use_mark=use_mark,
     )
     sendonly.connect(fake_audio=True)
     sendonly.run()
 
 
 if __name__ == "__main__":
-    mask_img = 'input_img/waraiotoko.png'
+    use_mark = True
+    mask_img = 'input_img/dynamicloop.png'
     cascade_file = 'haarcascade_frontalface_default.xml'
 
-    sendonly(mask_img, cascade_file)
+    sendonly(mask_img, cascade_file, use_mark)

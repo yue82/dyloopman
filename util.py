@@ -20,6 +20,15 @@ def replace_face(face_ps, target_img, mark_rgba):
             if mark_alpha_tmp[dy, dx, 3] != 0:
                 target_img[y + dy, x + dx, :3] = mark_alpha_tmp[dy, dx, :3]
 
+def replace_face_whitecycle(face_ps, target_img):
+    x, y, w, h = face_ps
+    # 入力画像の顔の部分にはめ込む
+    for dx in range(0, w):
+        for dy in range(0, h):
+            # 楕円内に含まれるなら
+            if ((dx - w/2)**2 / (w/2)**2 + (dy - h/2)**2 / (h/2)**2) <= 1:
+                target_img[y + dy, x + dx, :3] = (255, 255, 255)
+
 
 def output_img(input_img_path, target_img):
     output_img_path = 'output_img/{}'.format('/'.join(input_img_path.split('/')[1:]))
