@@ -10,7 +10,7 @@
 ```
 #### on git bash
 $ pipenv install
-$ curl 'https://raw.githubusercontent.com/opencv/opencv/refs/heads/4.x/data/haarcascades/haarcascade_frontalface_default.xml' > haarcascade_frontalface_default.xml
+$ bash get_detecotor_files.sh
 ```
 
 ## how to use

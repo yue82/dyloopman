@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
+
 import json
 import os
+import sys
 import platform
 import threading
 import time
@@ -32,8 +35,6 @@ class Sendonly:
         self,
         signaling_urls: list[str],
         channel_id: str,
-        cascade_file_path: str,
-        mask_img_path: str,
         metadata: Optional[dict[str, Any]] = None,
         audio: Optional[bool] = None,
         video: Optional[bool] = None,
@@ -45,7 +46,10 @@ class Sendonly:
         audio_channels: int = 1,
         audio_sample_rate: int = 16000,
         video_capture: Optional[cv2.VideoCapture] = None,
-        use_mark = False,
+        mark_type: str = 'white',
+        mark_files: Optional[str] = None,
+        detector_type: str = 'cascade',
+        detector_files: Optional[str] = None,
     ):
         """
         Sendonly インスタンスを初期化します。
@@ -106,10 +110,14 @@ class Sendonly:
         if video_capture is not None:
             self._video_capture = video_capture
 
-        self.cascade = cv2.CascadeClassifier(cascade_file_path)
-        util.check_file('Mask', mask_img_path)
-        self.mark_rgba = cv2.imread(mask_img_path, cv2.IMREAD_UNCHANGED)
-        self.use_mark = use_mark
+        self.mark_type = mark_type
+        self.detector_type = detector_type
+        width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.detector = util.setup_detector(detector_type, detector_files, width, height)
+        if mark_type != 'white':
+            util.check_file('Mask', mark_files[mark_type])
+            self.mark_rgba = cv2.imread(mark_files[mark_type], cv2.IMREAD_UNCHANGED)
 
 
     def connect(self, fake_audio=False, fake_video=False) -> None:
@@ -144,13 +152,13 @@ class Sendonly:
         """
         while not self._closed.is_set():
             ret, target_frame = self._video_capture.read()
-            target_frame_gray = cv2.cvtColor(target_frame, cv2.COLOR_BGR2GRAY)
-            faces = self.cascade.detectMultiScale(target_frame_gray, scaleFactor=1.1, minNeighbors=3, minSize=(75, 75))
-            for face_ps in faces:
-                if self.use_mark:
-                    util.replace_face(face_ps, target_frame, self.mark_rgba)
+            face_boxes = util.detect_face_boxes(self.detector_type, self.detector, target_frame)
+
+            for face_box in face_boxes:
+                if self.mark_type != 'white':
+                    util.replace_face(face_box, target_frame, self.mark_rgba)
                 else:
-                    util.replace_face_whitecycle(face_ps, target_frame)
+                    util.replace_face_whitecycle(face_box, target_frame)
             if ret:
                 self._video_source.on_captured(target_frame)
 
@@ -323,7 +331,7 @@ def get_video_capture(
     return video_capture
 
 
-def sendonly(mask_img, cascade_file, use_mark) -> None:
+def sendonly(mark_type, mark_files, detector_type, detector_files) -> None:
     """
     環境変数を使用して Sendonly インスタンスを設定し実行します。
 
@@ -367,23 +375,38 @@ def sendonly(mask_img, cascade_file, use_mark) -> None:
     sendonly = Sendonly(
         signaling_urls,
         channel_id,
-        cascade_file_path=cascade_file,
-        mask_img_path=mask_img,
         metadata=metadata,
         video_codec_type=video_codec_type,
         video_bit_rate=video_bit_rate,
         openh264_path=openh264_path,
         use_hwa=use_hwa,
         video_capture=video_capture,
-        use_mark=use_mark,
+        mark_type=mark_type,
+        mark_files=mark_files,
+        detector_type=detector_type,
+        detector_files=detector_files,
     )
     sendonly.connect(fake_audio=True)
     sendonly.run()
 
 
 if __name__ == "__main__":
-    use_mark = True
-    mask_img = 'input_img/dynamicloop.png'
-    cascade_file = 'haarcascade_frontalface_default.xml'
+    detector_type = 'cascade'
+    mark_type = 'white'
+    mark_files = {
+        'dyloop': 'input_img/dynamicloop.png',
+        'warai': 'input_img/waraiotoko.png',
+    }
+    detector_files = {
+        'cascade': 'detectors/haarcascade_frontalface_default.xml',
+        'caffemodel': 'detectors/opencv_face_detector.caffemodel',
+        'prototxt': 'detectors/opencv_face_detector.prototxt',
+        'yunet': 'detectors/yunet_n_640_640.onnx',
+        }
 
-    sendonly(mask_img, cascade_file, use_mark)
+    if len(sys.argv) < 3:
+        print('set detector_type cascade/caffe/yunet, mark_type white/dyloop/warai')
+        exit(1)
+    detector_type = sys.argv[1]
+    mark_type = sys.argv[2]
+    sendonly(mark_type, mark_files, detector_type, detector_files)
